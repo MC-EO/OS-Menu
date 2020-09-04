@@ -1,0 +1,242 @@
+#!/data/data/com.termux/files/usr/bin/bash
+#termux-setup-storage
+cd ${HOME}
+info="\033[01;32m[INFO]\033[00m "
+warn="\033[01;33m[WARN]\033[00m "
+eror="\033[01;31m[EROR]\033[00m "
+dependencies=""
+if [ ! -e $PREFIX/bin/proot ]; then
+  dependencies="${dependencies} proot"
+fi
+
+if [ ! -e $PREFIX/bin/figlet ]; then
+  dependencies="${dependencies} figlet"
+fi
+
+if [ ! -e $PREFIX/bin/pv ]; then
+  dependencies="${dependencies} pv"
+fi
+
+if [ ! -e $PREFIX/bin/axel ]; then
+  dependencies="${dependencies} axel"
+fi
+
+if [ ! -e $PREFIX/bin/curl ]; then
+	  dependencies="${dependencies} curl"
+fi
+
+if [ ! -z "$dependencies" ]; then
+  echo -e "${info}Installation Dependency..."
+  echo "${info}apt-get install -y ${dependencies}"
+  apt-get install -y ${dependencies}
+  echo -e "${info}Installation completed"
+fi
+
+
+case `dpkg --print-architecture` in
+aarch64)
+	archjg="arm64" ;;
+arm)
+	archjg="armhf" ;;
+amd64)
+	archjg="amd64" ;;
+*)
+	echo -e "${warn}Unknown Architecture"
+        echo -e "${eror}Operation Termination"
+        exoit="exit()"
+	;;
+esac
+
+$exoit
+mirrors=https://mirrors.tuna.tsinghua.edu.cn/lxc-images/images/
+tarxz () {
+osfs=rootfs.tar.xz
+echo -e "${info}Extracting from ${os}-rootfs.tar.xz..."
+proot --link2symlink tar -xvpf ~/${osroot}/${osfs}
+rm ~/${osroot}/${osfs}
+cd ~
+}
+
+download () {
+curl -L "${mirrors}${os}/${ose}/${archjg}/default/" -o get-date-tmp.html &>/dev/null
+  ostime=$(cat get-date-tmp.html | tail -n4 | head -n1 | cut -d\" -f4)
+  echo $ostime
+  rm -f get-date-tmp.html
+osroot=${os}-${archjg}
+if [ ! -d ~/${osroot} ]; then
+	  mkdir ${osroot}
+fi
+cd ~/${osroot}
+axel "${mirrors}${os}/${ose}/${archjg}/default/${ostime}rootfs.tar.xz"
+}
+
+startj () {
+echo -e "${info}Create Startup Script..."
+START=${PREFIX}/bin/start-${os}
+cat > $START <<- EOF
+#!/data/data/com.termux/files/usr/bin/bash
+cd \${HOME}
+unset LD_PRELOAD
+command="proot"
+command+=" --link2symlink"
+command+=" -0"
+command+=" -r ${osroot}"
+command+=" -b /dev"
+command+=" -b /proc"
+command+=" -b ${osroot}/root:/dev/shm"
+command+=" -w /root"
+command+=" /usr/bin/env -i"
+command+=" HOME=/root"
+command+=" PATH=/usr/local/sbin:/usr/local/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/games:/usr/local/games"
+command+=" TERM=\$TERM"
+command+=" LANG=C.UTF-8"
+command+=" /bin/bash --login"
+com="\$@"
+if [ -z "\$1" ];then
+	exec \$command
+else
+	\$command -c "\$com"
+fi
+EOF
+chmod 755 $START
+echo -e "${info}Once created, enter'start-${os}'to enter the system"
+}
+
+#LinuxMenu
+echo -e "\033[01;32m"
+figlet "OS Menu"
+echo ""
+echo " "
+echo -e "\033[01;32m+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>\033[00m"
+echo -e "\033[01;34m  [01] Ubuntu                  [02] Debian"
+echo -e "\033[01;34m  [03] ArchLinux               [04] Devuan"
+echo -e "\033[01;34m  [05] Fedora (不支持armhf)    [06] CentOS (不支持armhf)"
+echo -e "\033[01;34m  [07] KaliLinux               [08] Nethunter"
+echo -e "\033[01;34m  [09] Alpine                  [10] VoidLinux"
+echo -e "\033[01;34m  [11] MintLinux (仅支持amd64) [12] opensuse (不支持armhf)"
+echo -e "\033[01;32m+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>+=>\033[00m"
+read -p "$(echo -e "\033[01;32m[READ] install>\033[00m") " input
+case $input in
+01|1)
+os=ubuntu
+ose=bionic
+echo -e "${info}You have chosen Ubuntu."
+echo -e "${info}Ubuntu-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+02|2)
+os=debian
+ose=sid
+echo -e "${info}You have chosen Debian."
+echo -e "${info}Debian-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+03|3)
+os=archlinux
+ose=current
+echo -e "${info}You have chosen Archlinux."
+echo -e "${info}Archlinux-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+04|4)
+os=devuan
+ose=beowulf
+echo -e "${info}You have chosen Devuan."
+echo -e "${info}Devuan-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+05|5)
+os=fedora
+ose=32
+echo -e "${info}You have chosen Fedora."
+echo -e "${info}Fedora-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+06|6)
+os=centos
+ose=8
+echo -e "${info}You have chosen CentOS."
+echo -e "${info}CentOS-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+07|7)
+os=kali
+ose=current
+echo -e "${info}You have chosen Kali."
+echo -e "${info}Kali-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+08|8)
+os=Nethunter
+osroot=${os}-${archjg}
+echo -e "${info}You have chosen Nethunter."
+echo -e "${info}Nethunter-$archjg will be installed for you."
+mkdir ~/${osroot}
+cd ~/${osroot}
+axel -o rootfs https://images.kali.org/nethunter/kalifs-$archjg-full.tar.xz
+tarxz
+startj
+;;
+09|9)
+os=alpine
+ose="3.12"
+echo -e "${info}You have chosen Alpine."
+echo -e "${info}Alpine-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+10)
+os=voidlinux
+ose=current
+echo -e "${info}You have chosen Voidlinux."
+echo -e "${info}Voidlinux-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+11)
+case $archjg in
+	amd64)
+	echo -e "${info}Available Architecture";;
+	*)
+	echo -e "${warn}Schema not available!"
+	echo -e "${eror}Operation Termination!"
+	eit=exit;;
+esac
+$eit
+os=mint
+ose=ulyana
+echo -e "${info}You have chosen Mintlinux."
+echo -e "${info}Mintlinux will be installed for you."
+osroot="${os}"
+mkdir ~/${osroot}
+cd ~/${osroot}
+axel https://mirrors.tuna.tsinghua.edu.cn/lxc-images/images/mint/ulyana/amd64/default/20200823_08%3A51/rootfs.tar.xz
+tarxz
+startj
+;;
+12)
+os=opensuse
+ose=15.2
+echo -e "${info}You have chosen Opensuse."
+echo -e "${info}Opensuse-$archjg will be installed for you."
+download
+tarxz
+startj
+;;
+esac
